@@ -4,6 +4,12 @@ Advent of code: day 03
 
 import click
 
+from engine_components import Part, Gear
+
+
+# A lot of iterations in which we really are mostly interested in the index here
+# pylint: disable=consider-using-enumerate
+
 
 @click.command()
 @click.argument("input_file", type=click.File("r"))
@@ -12,27 +18,49 @@ def solve(input_file):
     Solve the day's exercise.
     """
     engine_array = read_to_array(input_file)
-    click.echo(f"part 1: {part_number_sum(engine_array)}")
+    gears = find_gears(engine_array)
+    parts = find_parts(engine_array, gears)
+    part_number_sum = sum([part.value for part in parts])
+    click.echo(f"part 1: {part_number_sum}")
+    gear_ratio_sum = sum([gear.gear_ratio for gear in gears.values()])
+    click.echo(f"part 2: {gear_ratio_sum}")
 
 
-def part_number_sum(engine_array):
+def find_gears(engine_array):
     """
-    Return the sum of all part numbers in given array
+    Return all Gears in given array
+    """
+    gears = {}
+    for line_number in range(len(engine_array)):
+        line = engine_array[line_number]
+        for column_number in range(len(line)):
+            if line[column_number] == "*":
+                gears[(line_number, column_number)] = Gear(line_number, column_number)
+    return gears
+
+
+def find_parts(engine_array, gears):
+    """
+    Return all Parts in given array. Also assigns them to their neighboring Gears.
     """
 
-    part_number_sum = 0
+    parts = []
 
     def check_and_add(
         current_number, engine_array, line_number, number_start, number_end
     ):
         """
         Check if we have just seen a number that is part of the engine, and add
-        it to part_number sum if we have
+        it to parts if we have
         """
         if current_number:
             if is_engine_part(engine_array, line_number, number_start, number_end):
-                nonlocal part_number_sum
-                part_number_sum += int(current_number)
+                new_part = Part(
+                    line_number, number_start, number_end, int(current_number)
+                )
+                for gear in new_part.adjacent_gears(engine_array, gears):
+                    gear.add_adjacent_part(new_part)
+                parts.append(new_part)
 
     for line_number in range(len(engine_array)):
         line = engine_array[line_number]
@@ -65,7 +93,7 @@ def part_number_sum(engine_array):
                     column_number,
                 )
 
-    return part_number_sum
+    return parts
 
 
 def is_engine_part(engine_array, line_number, number_start, number_end):
