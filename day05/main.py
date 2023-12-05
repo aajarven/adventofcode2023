@@ -7,6 +7,7 @@ import sys
 import click
 
 from mapper import Mapper
+from seed_range import Range
 
 
 @click.command()
@@ -22,9 +23,16 @@ def solve(input_file):
     ]
 
     click.echo(f"part 1: {minimum_soil(seeds, mappings)}")
-    click.echo(
-        f"part 2: {minimum_soil(seed_ints_from_ranges(input_lines[0]), mappings)}"
-    )
+
+    seeds = seed_ranges(input_lines[0])
+    new_seeds = []
+    for mapping in mappings:
+        for seed_range in seeds:
+            new_seeds += mapping.map_range(seed_range)
+        seeds = new_seeds
+        new_seeds = []
+
+    click.echo(f"part 2: {min(seed_range.start for seed_range in seeds)}")
 
 
 def minimum_soil(seeds, mappings):
@@ -34,7 +42,6 @@ def minimum_soil(seeds, mappings):
             seed = mapping.map(seed)
         if seed < minimum_soil:
             minimum_soil = seed
-            print(minimum_soil)
     return minimum_soil
 
 
@@ -45,14 +52,15 @@ def seed_ints(seed_line):
     return [int(substring) for substring in seed_line.strip("seeds: ").split()]
 
 
-def seed_ints_from_ranges(seed_line):
+def seed_ranges(seed_line):
     """
-    Iterate over a list of seed numbers from seed spec line ranges
+    Return a list of ranges corresponding to the numbers from seed spec line
     """
+    ranges = []
     spec_numbers = [int(substring) for substring in seed_line.strip("seeds: ").split()]
     for i in range(0, len(spec_numbers), 2):
-        for j in range(spec_numbers[i + 1]):
-            yield spec_numbers[i] + j
+        ranges.append(Range(spec_numbers[i], spec_numbers[i + 1]))
+    return ranges
 
 
 def split_to_mapper_specs(mapping_lines):
